@@ -2,12 +2,12 @@ import subprocess
 from pathlib import Path
 
 
-def run_md_maybe_parallel(
+def run_n_md_parallel(
     tmp_path: Path,
     project_root: Path,
     seq_name: str,
     pdb_dir: Path,
-    num_parallel_procs: int = 1,
+    n: int = 1,
     env: dict = None,
 ):
     """
@@ -17,7 +17,7 @@ def run_md_maybe_parallel(
 
     jobs = []
 
-    for i in range(num_parallel_procs):
+    for i in range(n):
         data_dir = tmp_path / f"parallel_md_{seq_name}" / f"proc_{i}"
 
         cmd = [
@@ -30,7 +30,7 @@ def run_md_maybe_parallel(
             # Static MD parameters
             "warmup_steps=0",  # The way we benchmark, we don't need an equilibration phase
             "frame_interval=1000",  # 1ps per frame
-            "time_ns=0.010",  # 100ps total simulation time
+            "time_ns=0.005",  # 50ps total simulation time
             "frames_per_chunk=100",  # Save 1000 frames at a time
         ]
 
