@@ -65,7 +65,6 @@ def test_benchmark_mps_parallel(
         procs_per_gpu: Number of processes to run per GPU.
     """
     import os
-    import sh
 
     # Set up paths - each benchmark run gets its own tmp_path for MD output
     seq_file = Path(__file__).parent / "test_benchmark_sequences.txt"
@@ -79,28 +78,22 @@ def test_benchmark_mps_parallel(
 
     # Run the benchmark
     def run_benchmark():
-        original_cwd = Path.cwd()
+        # Set up environment variables for generate_md
+        os.environ["HYDRA_CONFIG_PATH"] = str(project_root / "configs")
 
-        try:
-            # Change to project root so paths work correctly
-            sh.cd(project_root)
-
-            # Set up environment variables for generate_md
-            os.environ["HYDRA_CONFIG_PATH"] = str(project_root / "configs")
-
-            # Run the script with procs_per_gpu, seq_file, array task ID 0, pdb_dir, and unique data_dir
-            # The unique data_dir (from tmp_path) ensures each benchmark run doesn't detect previous runs as completed
-            run_sh_script(
-                [
-                    str(script_path),
-                    str(procs_per_gpu),
-                    str(seq_file),
-                    "0",
-                    str(benchmark_pdb_dir),
-                    str(unique_data_dir),
-                ],
-            )
-        finally:
-            sh.cd(original_cwd)
+        # Run the script with procs_per_gpu, seq_file, array task ID 0, pdb_dir, and unique data_dir
+        # The unique data_dir (from tmp_path) ensures each benchmark run doesn't detect previous runs as completed
+        # Use cwd parameter to set working directory to project root
+        run_sh_script(
+            [
+                str(script_path),
+                str(procs_per_gpu),
+                str(seq_file),
+                "0",
+                str(benchmark_pdb_dir),
+                str(unique_data_dir),
+            ],
+            cwd=str(project_root),
+        )
 
     benchmark(run_benchmark)
