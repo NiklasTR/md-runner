@@ -39,3 +39,4 @@ dependencies:
       - isort
       - hydra-submitit-launcher
       - pytest-xdist
+      - pytest-benchmark
