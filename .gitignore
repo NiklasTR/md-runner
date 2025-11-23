@@ -172,5 +172,5 @@ cython_debug/
 *.sv?
 slurm*.out
 
-# SLURM watch folder
-watch_folder/*
+# SLURM watch folders
+*watch_folder*/*

@@ -1,55 +1,64 @@
 #!/bin/bash
 #SBATCH -J generate_md_mps
-#SBATCH -o watch_folder/%x_%A_%a.out       # A = array job ID, a = array task ID
-#SBATCH --array=0-0                        # <-- adjust array length as needed
+#SBATCH -o watch_folder/%x_%A_%a.out
 #SBATCH --mem=32G
 #SBATCH -t 12:00:00
 #SBATCH --partition=long
 #SBATCH --gres=gpu:1
 #SBATCH -c 8
+#SBATCH --array=0-0
 #SBATCH --open-mode=append
 #SBATCH --requeue
 #SBATCH --signal=SIGUSR1@90
 #SBATCH --exclude=cn-g[001-029],cn-k[001-004],cn-b[001-005],cn-i001,cn-j001
 #SBATCH --get-user-env
 
-echo "Running on node: $HOSTNAME"
-echo "Array task ID: $SLURM_ARRAY_TASK_ID"
-echo "Starting CUDA MPS…"
+echo "Node: $HOSTNAME"
+echo "SLURM array ID: $SLURM_ARRAY_TASK_ID"
 
 # ============================
-# Create per-node MPS folders
+# Configuration
 # ============================
+SEQ_FILE="sequences/example_sequences.txt"
+PROCS_PER_GPU=4
+
+echo "Processes per GPU: $PROCS_PER_GPU"
+
+# ============================
+# Start CUDA MPS
+# ============================
+
+# Create task-array-unique MPS directories
 MPS_DIR=/tmp/$USER/mps_${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}
-mkdir -p "$MPS_DIR/pipe"
-mkdir -p "$MPS_DIR/log"
+mkdir -p "$MPS_DIR/pipe" "$MPS_DIR/log"
 
 export CUDA_MPS_PIPE_DIRECTORY="$MPS_DIR/pipe"
 export CUDA_MPS_LOG_DIRECTORY="$MPS_DIR/log"
 
 # Start the MPS server
 nvidia-cuda-mps-control -d
-echo "MPS started at $CUDA_MPS_PIPE_DIRECTORY"
+echo "MPS server started at $CUDA_MPS_PIPE_DIRECTORY"
 
 # ============================
-# Compute 4 sequence indices
+# Compute starting index
 # ============================
-BASE_IDX=$(( SLURM_ARRAY_TASK_ID * 4 ))
+BASE_IDX=$(( SLURM_ARRAY_TASK_ID * PROCS_PER_GPU ))
 
-IDX1=$(( BASE_IDX + 0 ))
-IDX2=$(( BASE_IDX + 1 ))
-IDX3=$(( BASE_IDX + 2 ))
-IDX4=$(( BASE_IDX + 3 ))
-
-echo "Launching MD jobs for indices: $IDX1, $IDX2, $IDX3, $IDX4"
+echo "Launching MD jobs from indices $BASE_IDX to $(( BASE_IDX + PROCS_PER_GPU - 1 ))"
 
 # ============================
-# Launch 4 MD jobs in parallel
+# Launch N processes
 # ============================
-python src/generate_md.py seq_idx=$IDX1 seq_filename=sequences/sequences.txt &
-python src/generate_md.py seq_idx=$IDX2 seq_filename=sequences/sequences.txt &
-python src/generate_md.py seq_idx=$IDX3 seq_filename=sequences/sequences.txt &
-python src/generate_md.py seq_idx=$IDX4 seq_filename=sequences/sequences.txt &
+for ((i=0; i<PROCS_PER_GPU; i++)); do
+    IDX=$(( BASE_IDX + i ))
+    if (( IDX >= NUM_LINES )); then
+        echo "Index $IDX exceeds total sequences; skipping."
+        continue
+    fi
+
+    echo "Launching process for seq_idx=$IDX"
+    python src/generate_md.py seq_idx=$IDX seq_filename=$SEQ_FILE &
+done
 
 wait
 echo "All MD jobs completed."
