@@ -14,6 +14,7 @@ def run_sh_script(command: Union[List[str], str], cwd: Union[str, None] = None) 
                     Use list format if paths contain spaces.
     :param cwd: Optional working directory for the subprocess.
     """
+    breakpoint()
     try:
         if isinstance(command, str):
             # Bash script - split into command and args, then run with bash

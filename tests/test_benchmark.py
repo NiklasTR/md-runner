@@ -2,7 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.helpers.run_sh_command import run_sh_script
+from tests.helpers.run_sh_script import run_sh_script
+
+from hydra.core.global_hydra import GlobalHydra
+from omegaconf import open_dict
+
+from src.seq_to_pdb import seq_to_pdb
+from tests.helpers.utils import compose_config
 
 
 @pytest.fixture(scope="session")
@@ -15,16 +21,12 @@ def benchmark_pdb_dir(shared_tmp_path: Path) -> Path:
     Returns:
         Path to directory containing generated PDB files.
     """
-    from hydra.core.global_hydra import GlobalHydra
-    from omegaconf import open_dict
 
-    from src.seq_to_pdb import seq_to_pdb
-    from tests.helpers.utils import compose_config
 
     GlobalHydra.instance().clear()
 
     # Generate PDB files for all benchmark sequences
-    seq_file = Path(__file__).parent / "test_benchmark_sequences.txt"
+    seq_file = Path(__file__).parent / "helpers/benchmarking_sequences.txt"
     cfg = compose_config(
         config_name="seq_to_pdb",
         overrides=[f"seq_filename={seq_file}"],
