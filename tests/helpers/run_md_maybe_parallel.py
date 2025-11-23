@@ -28,10 +28,10 @@ def run_md_maybe_parallel(
             f"paths.data_dir={data_dir}",
             f"pdb_dir={pdb_dir}",
             # Static MD parameters
-            "warmup_steps=0", # The way we benchmark, we don't need an equilibration phase
-            "frame_interval=1000", # 1ps per frame
-            "time_ns=0.010", # 100ps total simulation time
-            "frames_per_chunk=100", # Save 1000 frames at a time
+            "warmup_steps=0",  # The way we benchmark, we don't need an equilibration phase
+            "frame_interval=1000",  # 1ps per frame
+            "time_ns=0.010",  # 100ps total simulation time
+            "frames_per_chunk=100",  # Save 1000 frames at a time
         ]
 
         p = subprocess.Popen(
@@ -49,5 +49,5 @@ def run_md_maybe_parallel(
         stdout, stderr = p.communicate()
         if p.returncode != 0:
             raise RuntimeError(
-                f"MD job failed (exit {p.returncode}).\nSTDERR:\n{stderr}\nSTDOUT:\n{stdout}"
+                f"MD job failed (exit {p.returncode}).\nSTDERR:\n{stderr}\nSTDOUT:\n{stdout}",
             )
