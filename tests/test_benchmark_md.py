@@ -3,7 +3,6 @@ from pathlib import Path
 
 from tests.helpers.mps import mps_context
 from tests.helpers.run_md_maybe_parallel import run_md_maybe_parallel
-import pytest
 
 from tests.conftest import TEST_SEQUENCE
 
@@ -16,7 +15,13 @@ PARALLEL_PROC_VALUES = [2 ** i for i in range(0, int(TOTAL_RUNS).bit_length())] 
 @pytest.mark.forked
 # Only benchmark 1 (sequential) and 2 (naive parallel) processes without MPS.
 # 2 is enough to see the large difference with MPS, hence we skip larger values here.
-@pytest.mark.parametrize("num_parallel_procs", [1, 2])
+@pytest.mark.parametrize(
+    "num_parallel_procs",
+    [
+        pytest.param(1, id="benchmark_md_sequential"),
+        pytest.param(2, id="benchmark_md_parallel_naive_2"),
+    ],
+)
 @pytest.mark.benchmark
 def test_benchmark_md_no_mps(
     benchmark,
@@ -41,7 +46,13 @@ def test_benchmark_md_no_mps(
 
 
 @pytest.mark.forked
-@pytest.mark.parametrize("num_parallel_procs", PARALLEL_PROC_VALUES)
+@pytest.mark.parametrize(
+    "num_parallel_procs",
+    [
+        pytest.param(n, id=f"benchmark_md_parallel_mps_{n}")
+        for n in PARALLEL_PROC_VALUES
+    ],
+)
 @pytest.mark.benchmark
 def test_benchmark_md_mps(
     benchmark,
