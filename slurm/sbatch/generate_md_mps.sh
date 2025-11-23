@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH -J generate_md
+#SBATCH -J generate_md_mps
 #SBATCH -o watch_folder/%x_%A_%a.out       # A = array job ID, a = array task ID
-#SBATCH --array=0-110                       # <-- adjust array length as needed
+#SBATCH --array=0-0                        # <-- adjust array length as needed
 #SBATCH --mem=32G
 #SBATCH -t 12:00:00
 #SBATCH --partition=long
@@ -10,6 +10,8 @@
 #SBATCH --open-mode=append
 #SBATCH --requeue
 #SBATCH --signal=SIGUSR1@90
+#SBATCH --exclude=cn-g[001-029],cn-k[001-004],cn-b[001-005],cn-i001,cn-j001
+#SBATCH --get-user-env
 
 echo "Running on node: $HOSTNAME"
 echo "Array task ID: $SLURM_ARRAY_TASK_ID"
