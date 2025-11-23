@@ -17,7 +17,7 @@ from tests.helpers.utils import compose_config
 report_dir = os.environ.get("PYTEST_REPORT_DIR", "tests/")
 Path(report_dir).mkdir(parents=True, exist_ok=True)
 
-TEST_SEQUENCE = "PYA"
+TEST_SEQUENCE = "AVMPDQWVYWDNNIQT"
 
 
 @pytest.fixture(scope="session")
