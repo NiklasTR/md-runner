@@ -2,7 +2,6 @@
 Tests for generate_md.py - generating MD simulation data.
 """
 
-import os
 from pathlib import Path
 
 import numpy as np
@@ -11,12 +10,9 @@ from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, open_dict
 
 from src.generate_md import generate_md
+from src.utils import get_md_output_dir
 from tests.conftest import TEST_SEQUENCE
 from tests.helpers.utils import compose_config
-
-# Create report directory if it doesn't exist
-report_dir = os.environ.get("PYTEST_REPORT_DIR", "tests/")
-Path(report_dir).mkdir(parents=True, exist_ok=True)
 
 
 @pytest.fixture

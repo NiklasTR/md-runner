@@ -34,7 +34,8 @@ import rootutils
 from omegaconf import DictConfig
 from openmm import Platform, XmlSerializer
 from openmm.app import ForceField, PDBFile, Simulation, StateDataReporter
-from utils import get_md_output_dir
+
+from src.utils import get_md_output_dir
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
