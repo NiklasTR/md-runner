@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from hydra import compose, initialize
 from hydra.core.global_hydra import GlobalHydra
@@ -10,7 +10,7 @@ RELATIVE_CONFIG_PATH = "../../configs"  # relative to this utils.py file
 
 def compose_config(
     config_name: str,
-    overrides: Optional[List[str]] = None,
+    overrides: Optional[list[str]] = None,
 ) -> DictConfig:
     """
     Compose a Hydra configuration from a config file.

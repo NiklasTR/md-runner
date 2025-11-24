@@ -35,7 +35,8 @@ def run_n_md_parallel(
             "frames_per_chunk=100",  # Save 1000 frames at a time
         ]
 
-        p = subprocess.Popen(
+        # python is expected to be in PATH
+        p = subprocess.Popen(  # noqa: S603
             cmd,
             cwd=str(project_root),
             env=env,
