@@ -19,7 +19,7 @@ def read_sequences(path: Path):
     return {line for line in lines if line and not line.startswith("#")}
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description="Check which sequences reached a specified chunk")
     p.add_argument(
         "--sequence_files",
