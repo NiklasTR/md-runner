@@ -11,7 +11,7 @@ and report which sequences do NOT have any matching
 """
 
 
-def read_sequences(path: Path):
+def read_sequences(path: Path) -> set[str]:
     if not path.exists():
         print(f"Warning: list file not found: {path}", file=sys.stderr)
         return set()

@@ -1,6 +1,8 @@
 import subprocess
 from pathlib import Path
 
+from typing import Optional
+
 
 def run_n_md_parallel(
     tmp_path: Path,
@@ -9,10 +11,10 @@ def run_n_md_parallel(
     pdb_dir: Path,
     simulation_time_ns: float = 0.010,
     n: int = 1,
-    env: dict = None,
+    env: Optional[dict[str, str]] = None,
 ):
     """
-    Launch num_parallel_procs parallel MD processes under MPS.
+    Launch n parallel MD processes under MPS.
     Each process gets its own output directory: base_output_dir/proc_{i}
     """
 
@@ -32,7 +34,7 @@ def run_n_md_parallel(
             "warmup_steps=0",  # The way we benchmark, we don't need an equilibration phase
             "frame_interval=1000",  # 1ps per frame
             f"time_ns={simulation_time_ns}",  # Total simulation time
-            "frames_per_chunk=100",  # Save 1000 frames at a time
+            "frames_per_chunk=100",  # Save 100 frames at a time
         ]
 
         # python is expected to be in PATH

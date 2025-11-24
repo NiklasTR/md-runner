@@ -34,6 +34,7 @@ import rootutils
 from omegaconf import DictConfig
 from openmm import Platform, XmlSerializer
 from openmm.app import ForceField, PDBFile, Simulation, StateDataReporter
+from utils import get_md_output_dir
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
@@ -83,7 +84,7 @@ def generate_md(cfg: DictConfig) -> None:  # noqa: C901
         sequence = sequences[cfg.seq_idx]
         pdb_path = Path(cfg.pdb_dir) / f"{sequence}.pdb"
 
-    output_dir = f"{cfg.paths.data_dir}/md/{sequence}_{cfg.temperature}_{cfg.frame_interval}_{cfg.frames_per_chunk}"
+    output_dir = get_md_output_dir(cfg, sequence)
 
     # Calculate number of frames from time period
     # Each integration step is 1 fs, frame_interval steps between frames

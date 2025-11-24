@@ -16,7 +16,6 @@ SIMULATION_TIME_NS = 0.2  # 200 ps
 # Fixed value of total runs to normalize across parallelism configs.
 TOTAL_RUNS = 8
 assert TOTAL_RUNS >= 1
-assert TOTAL_RUNS > 0, "TOTAL_RUNS must greater than 0"
 assert (TOTAL_RUNS & (TOTAL_RUNS - 1)) == 0, "TOTAL_RUNS must be a power of 2"
 PARALLEL_PROC_VALUES = [2**i for i in range(1, int(TOTAL_RUNS).bit_length())]  # [2, ..., TOTAL_RUNS]
 

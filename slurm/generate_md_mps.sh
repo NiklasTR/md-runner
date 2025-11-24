@@ -51,11 +51,6 @@ echo "Launching MD jobs from indices $BASE_IDX to $(( BASE_IDX + PROCS_PER_GPU -
 # ============================
 for ((i=0; i<PROCS_PER_GPU; i++)); do
     IDX=$(( BASE_IDX + i ))
-    if (( IDX >= NUM_LINES )); then
-        echo "Index $IDX exceeds total sequences; skipping."
-        continue
-    fi
-
     echo "Launching process for seq_idx=$IDX"
     python src/generate_md.py seq_idx=$IDX seq_filename=$SEQ_FILE &
 done
