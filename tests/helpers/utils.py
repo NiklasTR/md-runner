@@ -60,3 +60,14 @@ def extract_test_sequence(cfg: DictConfig) -> Any:
     """
     seq = getattr(cfg.data, "sequence", None) or cfg.data.test_sequences
     return seq[0] if isinstance(seq, list) else seq
+
+
+# project_root.py
+
+
+def get_project_root(marker=".project-root"):
+    p = Path(__file__).resolve()
+    for parent in [p] + list(p.parents):
+        if (parent / marker).exists():
+            return parent
+    raise RuntimeError(f"Project root marker '{marker}' not found.")

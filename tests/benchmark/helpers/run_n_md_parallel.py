@@ -7,6 +7,7 @@ def run_n_md_parallel(
     project_root: Path,
     seq_name: str,
     pdb_dir: Path,
+    simulation_time_ns: float = 0.010,
     n: int = 1,
     env: dict = None,
 ):
@@ -30,7 +31,7 @@ def run_n_md_parallel(
             # Static MD parameters
             "warmup_steps=0",  # The way we benchmark, we don't need an equilibration phase
             "frame_interval=1000",  # 1ps per frame
-            "time_ns=0.005",  # 50ps total simulation time
+            f"time_ns={simulation_time_ns}",  # Total simulation time
             "frames_per_chunk=100",  # Save 1000 frames at a time
         ]
 
