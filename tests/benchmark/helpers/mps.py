@@ -34,8 +34,8 @@ def mps_context():
     finally:
         # Tell MPS server to quit
         # Using subprocess.Popen to avoid shell=True while piping
-        quit_process = subprocess.Popen(  # noqa: S603, S607
-            ["nvidia-cuda-mps-control"],
+        quit_process = subprocess.Popen(  # noqa: S603
+            ["nvidia-cuda-mps-control"],  # noqa: S607
             stdin=subprocess.PIPE,
             env=env,
         )

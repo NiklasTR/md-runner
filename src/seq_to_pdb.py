@@ -166,12 +166,8 @@ def seq_to_pdb(cfg: DictConfig) -> None:
     pdb_dir.mkdir(parents=True, exist_ok=True)
 
     # Check only one of seq_filename or seq_name is provided
-    assert cfg.seq_filename is not None or cfg.seq_name is not None, (
-        "Either seq_filename or seq_name must be provided"
-    )
-    assert cfg.seq_filename is None or cfg.seq_name is None, (
-        "Only one of seq_filename or seq_name must be provided"
-    )
+    assert cfg.seq_filename is not None or cfg.seq_name is not None, "Either seq_filename or seq_name must be provided"
+    assert cfg.seq_filename is None or cfg.seq_name is None, "Only one of seq_filename or seq_name must be provided"
 
     if cfg.seq_filename is not None:
         seq_filename = cfg.seq_filename

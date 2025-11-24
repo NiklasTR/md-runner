@@ -217,7 +217,12 @@ def test_generate_md_basic(cfg_test_generate_md: DictConfig) -> None:
     """
     generate_md(cfg_test_generate_md)
 
-    chunks_dir = Path(cfg_test_generate_md.output_dir) / "chunks"
+    chunks_dir = (
+        Path(
+            f"{cfg_test_generate_md.paths.data_dir}/md/{TEST_SEQUENCE}_{cfg_test_generate_md.temperature}_{cfg_test_generate_md.frame_interval}_{cfg_test_generate_md.frames_per_chunk}"
+        )
+        / "chunks"
+    )
     assert chunks_dir.exists(), "Chunks directory not created"
 
     chunk_files = list(chunks_dir.glob("chunk_*.npz"))
@@ -242,7 +247,12 @@ def test_generate_md_resume(cfg_test_generate_md: DictConfig) -> None:
     """
     generate_md(cfg_test_generate_md)
 
-    chunks_dir = Path(cfg_test_generate_md.output_dir) / "chunks"
+    chunks_dir = (
+        Path(
+            f"{cfg_test_generate_md.paths.data_dir}/md/{TEST_SEQUENCE}_{cfg_test_generate_md.temperature}_{cfg_test_generate_md.frame_interval}_{cfg_test_generate_md.frames_per_chunk}"
+        )
+        / "chunks"
+    )
     assert chunks_dir.exists(), "Chunks directory not created"
 
     chunk_files = list(chunks_dir.glob("chunk_*.npz"))

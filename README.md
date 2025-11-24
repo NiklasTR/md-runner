@@ -40,7 +40,16 @@ For large-scale dataset generation, we recommend the following SLURM script:
 ./slurm/generate_md_mps.sh
 ```
 
-This script runs a SLURM array in which N parallel jobs are launched on each GPU, making use of CUDA MPS. The default value is N=4, see `tests/benchmark/README.md` for further details.
+This script runs a SLURM array in which N parallel jobs are launched on each GPU, making use of CUDA MPS. The default value is N=4, as determined using a NVIDIA L40S, 4 CPU, 32GB RAM using benchmark sequence `AVMPDQWVYWDNNIQT` for 500ps:
+
+| Name                          | Min          | Max          | Mean         |
+|------------------------------|--------------|--------------|--------------|
+| test_benchmark_md_mps[4]     | 3.4955       | 8.9560       | 6.7632       |
+| test_benchmark_md_mps[2]     | 5.8704       | 9.2019       | 7.0463       |
+| test_benchmark_md_mps[8]     | 7.1361       | 32.6664      | 19.4219      |
+| test_benchmark_md_sequential | 10.3010      | 10.4901      | 10.3697      |
+
+Run `pytest tests/benchmark/test_benchmark_md.py` to benchmark on any given system.
 
 ## Citation
 

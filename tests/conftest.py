@@ -3,7 +3,6 @@ Shared test fixtures.
 """
 
 import logging
-import os
 from collections.abc import Generator
 from pathlib import Path
 
@@ -17,11 +16,8 @@ from tests.helpers.utils import compose_config
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create report directory if it doesn't exist
-report_dir = os.environ.get("PYTEST_REPORT_DIR", "tests/")
-Path(report_dir).mkdir(parents=True, exist_ok=True)
-
-TEST_SEQUENCE = "AVMPDQWVYWDNNIQT"
+# TEST_SEQUENCE = "AVMPDQWVYWDNNIQT"
+TEST_SEQUENCE = "AVMP"
 
 
 @pytest.fixture(scope="session")

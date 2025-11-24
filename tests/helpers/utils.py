@@ -62,9 +62,6 @@ def extract_test_sequence(cfg: DictConfig) -> Any:
     return seq[0] if isinstance(seq, list) else seq
 
 
-# project_root.py
-
-
 def get_project_root(marker=".project-root"):
     p = Path(__file__).resolve()
     for parent in [p] + list(p.parents):
