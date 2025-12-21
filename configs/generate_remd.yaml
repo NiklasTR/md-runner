@@ -18,7 +18,7 @@ min_temp: 300
 max_temp: 500
 n_states: 6
 timestep_fs: 2.0
-com_restraint: true  # Apply force to keep COM of peptide complexes together
+com_restraint: false  # Apply force to keep COM of peptide complexes together
 forcefield_files:
   - amber14-all.xml
   - implicit/obc1.xml
