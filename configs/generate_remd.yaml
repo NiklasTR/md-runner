@@ -22,7 +22,7 @@ com_restraint: false  # Apply force to keep COM of peptide complexes together
 forcefield_files:
   - amber14-all.xml
   - implicit/obc1.xml
-warmup_steps: 25_000 # How many integration steps to take before recording frames
-frame_interval: 2_500 # How many integration steps between swap attempts and frame recordings
+warmup_iterations: 10 # How many iterations to run before starting to record frames
+frame_interval: 2_500 # How many integration steps between iterations (i.e. swap attempts and frame recordings)
 time_ns: 1.0 # Total simulation time in nanoseconds
 demultiplex: true # Extract per-state trajectories and swap rates after simulation
