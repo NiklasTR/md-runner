@@ -25,3 +25,4 @@ forcefield_files:
 warmup_steps: 25_000 # How many integration steps to take before recording frames
 frame_interval: 2_500 # How many integration steps between swap attempts and frame recordings
 time_ns: 1.0 # Total simulation time in nanoseconds
+demultiplex: true # Extract per-state trajectories and swap rates after simulation

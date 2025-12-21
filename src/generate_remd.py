@@ -95,6 +95,73 @@ def setup_platform(cfg):
     return None
 
 
+def save_swap_rates(reporter, output_dir: Path):
+    """Compute and save swap acceptance rates between neighboring thermodynamic states."""
+    analysis = reporter._storage_analysis
+    accepted = np.array(analysis.variables["accepted"][:])  # (iter, state_i, state_j)
+    proposed = np.array(analysis.variables["proposed"][:])
+    n_states = accepted.shape[1]
+
+    rates = np.zeros(n_states - 1)
+    for i in range(n_states - 1):
+        n_acc = accepted[:, i, i + 1].sum()
+        n_prop = proposed[:, i, i + 1].sum()
+        rates[i] = n_acc / n_prop if n_prop > 0 else 0.0
+
+    logger.info("Swap rates: " + ", ".join(f"{i}<->{i+1}: {r:.4f}" for i, r in enumerate(rates)))
+    np.savetxt(output_dir / "swap_rates.txt", rates)
+
+
+def demultiplex_trajectories(reporter):
+    """Demultiplex trajectories by thermodynamic state (e.g. temperature).
+
+    Returns
+    -------
+    positions : np.ndarray
+        Shape (n_states, n_iter, n_atoms, 3), float32.
+    velocities : np.ndarray
+        Shape (n_states, n_iter, n_atoms, 3), float32.
+    """
+    checkpoint = reporter._storage_checkpoint
+    analysis = reporter._storage_analysis
+    checkpoint_interval = int(checkpoint.CheckpointInterval)
+
+    positions = np.array(checkpoint.variables["positions"][:])    # (n_ckpt, replica, atom, 3)
+    velocities = np.array(checkpoint.variables["velocities"][:])  # (n_ckpt, replica, atom, 3)
+    all_states = np.array(analysis.variables["states"][:])        # (n_iter, replica)
+
+    n_ckpt, n_states, n_atoms, _ = positions.shape
+
+    # Get state assignments at checkpoint (coord/vel save) frames only
+    ckpt_indices = np.arange(n_ckpt) * checkpoint_interval
+    states = all_states[ckpt_indices]  # (n_ckpt, replica)
+
+    # Reorder by state using argsort: order[state] = replica holding that state
+    demux_pos = np.zeros((n_states, n_ckpt, n_atoms, 3), dtype=np.float32)
+    demux_vel = np.zeros((n_states, n_ckpt, n_atoms, 3), dtype=np.float32)
+
+    for frame in range(n_ckpt):
+        order = np.argsort(states[frame])
+        demux_pos[:, frame] = positions[frame, order]
+        demux_vel[:, frame] = velocities[frame, order]
+
+    return demux_pos, demux_vel
+
+
+def save_state_trajectories(reporter, output_dir: Path, temperatures: np.ndarray):
+    """Demultiplex trajectories by thermodynamic state and save to npz file."""
+    positions, velocities = demultiplex_trajectories(reporter)
+    n_states, n_iter = positions.shape[:2]
+
+    np.savez_compressed(
+        output_dir / "trajectories.npz",
+        positions=positions,    # (n_states, n_ckpt, n_atoms, 3)
+        velocities=velocities,  # (n_states, n_ckpt, n_atoms, 3)
+        temperatures=temperatures.astype(np.float32),  # (n_states,)
+    )
+    logger.info(f"Saved trajectories: {n_states} states, {n_iter} frames each")
+
+
 @hydra.main(version_base="1.3", config_path="../configs", config_name="generate_remd.yaml")
 def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
     assert cfg.frame_interval > 0
@@ -193,6 +260,14 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
         logger.info(f"Warmup done, {cfg.warmup_steps} steps per replica.")
 
     sampler.run()
+
+    save_swap_rates(reporter, Path(cfg.output_dir))
+    # NOTE: Demultiplexing is CPU-bound and may waste GPU time; some may prefer to do this as a post-processing step
+    if cfg.get("demultiplex", False):
+        logger.info("Demultiplexing and saving state trajectories...")
+        temps = np.array([t.value_in_unit(unit.kelvin) for t in temperatures])
+        save_state_trajectories(reporter, Path(cfg.output_dir), temps)
+        logger.info("Demultiplexing complete.")
 
 
 if __name__ == "__main__":
