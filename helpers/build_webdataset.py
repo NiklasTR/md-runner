@@ -143,7 +143,7 @@ def build_tar(tar_index, samples_for_tar, tar_filename):
         for sample_filename, sample in samples_for_tar:
             assert sample.dtype == np.float32
             assert len(sample.shape) == 2 and sample.shape[1] == 3
-            assert sample.shape[0] < 300
+            assert sample.shape[0] < 600
 
             raw_bytes = sample.astype(np.float32).tobytes()
             buffer = io.BytesIO(raw_bytes)
