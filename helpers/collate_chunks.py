@@ -1,7 +1,8 @@
 import argparse
 import sys
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
 import numpy as np
 
 
@@ -10,7 +11,7 @@ def collate_chunks_for_sequence(chunks_dir: Path, output_path: Path) -> bool:
     # Find all chunk files
     chunk_files = sorted(
         chunks_dir.glob("chunk_*.npz"),
-        key=lambda p: int(p.stem.split("_")[-1])
+        key=lambda p: int(p.stem.split("_")[-1]),
     )
 
     if not chunk_files:
@@ -56,12 +57,11 @@ def collate_chunks_for_sequence(chunks_dir: Path, output_path: Path) -> bool:
     np.savez_compressed(
         output_path,
         positions=combined_positions,
-        velocities=combined_velocities
+        velocities=combined_velocities,
     )
 
     print(
-        f"Saved {len(chunk_files)} chunks -> {output_path} "
-        f"(shape: {combined_positions.shape})"
+        f"Saved {len(chunk_files)} chunks -> {output_path} (shape: {combined_positions.shape})",
     )
     return True
 
@@ -125,8 +125,7 @@ def main() -> None:
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
         # Submit all tasks
         future_to_seq = {
-            executor.submit(process_sequence, seq_info_dir): seq_info_dir
-            for seq_info_dir in seq_info_dirs
+            executor.submit(process_sequence, seq_info_dir): seq_info_dir for seq_info_dir in seq_info_dirs
         }
 
         # Process completed tasks

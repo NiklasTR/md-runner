@@ -1,7 +1,8 @@
 import argparse
 import sys
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
 import numpy as np
 
 
@@ -33,10 +34,10 @@ def downsample_file(input_path: Path, output_path: Path, factor: int) -> bool:
             positions=positions,
             velocities=velocities,
         )
-        
+
         print(f"Downsampled {input_path.name}: {original_shape} -> {new_shape} (factor: {factor})")
         return True
-        
+
     except Exception as e:
         print(f"Error processing {input_path}: {e}", file=sys.stderr)
         return False
@@ -84,7 +85,7 @@ def main() -> None:
 
     # Find all .npz files
     npz_files = sorted(input_dir.glob("*.npz"))
-    
+
     if not npz_files:
         print(f"Error: No .npz files found in {input_dir}", file=sys.stderr)
         sys.exit(1)
@@ -105,10 +106,7 @@ def main() -> None:
 
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
         # Submit all tasks
-        future_to_file = {
-            executor.submit(process_file, npz_file): npz_file
-            for npz_file in npz_files
-        }
+        future_to_file = {executor.submit(process_file, npz_file): npz_file for npz_file in npz_files}
 
         # Process completed tasks
         for future in as_completed(future_to_file):
