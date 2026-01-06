@@ -38,3 +38,4 @@ dependencies:
       - isort
       - pytest-xdist
       - pytest-benchmark
+      - biopython

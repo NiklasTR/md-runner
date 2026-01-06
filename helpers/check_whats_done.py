@@ -24,7 +24,7 @@ def main() -> None:
     p.add_argument(
         "--sequence_files",
         nargs="+",
-        default=["sequences/example_sequences.txt"],
+        default=["sequences/new_sequences.txt"],
         help="sequence list files",
     )
     p.add_argument(
