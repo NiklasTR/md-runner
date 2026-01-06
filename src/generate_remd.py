@@ -6,11 +6,10 @@ import numpy as np
 import openmm
 import rootutils
 from omegaconf import DictConfig
-from openmm import Platform, unit, CustomCentroidBondForce
+from openmm import CustomCentroidBondForce, Platform, unit
 from openmm.app import ForceField, PDBFile
-from openmmtools import multistate, mcmc, states
+from openmmtools import mcmc, multistate, states
 from openmmtools.cache import global_context_cache
-
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
@@ -27,7 +26,10 @@ def geometric_temps(min_temp: float, max_temp: float, n_states: int) -> unit.Qua
 
 
 def add_com_restraint(
-    system, topology, r0=2.0 * unit.nanometer, k=100.0 * unit.kilojoules_per_mole / unit.nanometer**2
+    system,
+    topology,
+    r0=2.0 * unit.nanometer,
+    k=100.0 * unit.kilojoules_per_mole / unit.nanometer**2,
 ):
     """Add flat-bottomed COM restraint between first two protein chains.
     See: https://cbc-univie.github.io/transformato/_modules/transformato/restraints.html#Restraint._add_flatbottom_parameters
@@ -108,7 +110,7 @@ def save_swap_rates(reporter, output_dir: Path):
         n_prop = proposed[:, i, i + 1].sum()
         rates[i] = n_acc / n_prop if n_prop > 0 else 0.0
 
-    logger.info("Swap rates: " + ", ".join(f"{i}<->{i+1}: {r:.4f}" for i, r in enumerate(rates)))
+    logger.info("Swap rates: " + ", ".join(f"{i}<->{i + 1}: {r:.4f}" for i, r in enumerate(rates)))
     np.savetxt(output_dir / "swap_rates.txt", rates)
 
 
@@ -126,9 +128,9 @@ def demultiplex_trajectories(reporter):
     analysis = reporter._storage_analysis
     checkpoint_interval = int(checkpoint.CheckpointInterval)
 
-    positions = np.array(checkpoint.variables["positions"][:])    # (n_ckpt, replica, atom, 3)
+    positions = np.array(checkpoint.variables["positions"][:])  # (n_ckpt, replica, atom, 3)
     velocities = np.array(checkpoint.variables["velocities"][:])  # (n_ckpt, replica, atom, 3)
-    all_states = np.array(analysis.variables["states"][:])        # (n_iter, replica)
+    all_states = np.array(analysis.variables["states"][:])  # (n_iter, replica)
 
     n_ckpt, n_states, n_atoms, _ = positions.shape
 
@@ -155,7 +157,7 @@ def save_state_trajectories(reporter, output_dir: Path, temperatures: np.ndarray
 
     np.savez_compressed(
         output_dir / "trajectories.npz",
-        positions=positions,    # (n_states, n_ckpt, n_atoms, 3)
+        positions=positions,  # (n_states, n_ckpt, n_atoms, 3)
         velocities=velocities,  # (n_states, n_ckpt, n_atoms, 3)
         temperatures=temperatures.astype(np.float32),  # (n_states,)
     )
@@ -168,9 +170,9 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
     assert cfg.time_ns > 0
     assert cfg.timestep_fs > 0
 
-    assert cfg.get("pdb_dir") is not None or (
-        cfg.get("seq_filename") is not None and cfg.get("seq_idx") is not None
-    ), "Either 'pdb_dir' or both 'seq_filename' and 'seq_idx' must be specified in the config"
+    assert cfg.get("pdb_dir") is not None or (cfg.get("seq_filename") is not None and cfg.get("seq_idx") is not None), (
+        "Either 'pdb_dir' or both 'seq_filename' and 'seq_idx' must be specified in the config"
+    )
 
     if cfg.get("seq_name") is not None:
         pdb_path = Path(cfg.pdb_dir) / f"{cfg.seq_name}.pdb"
@@ -182,6 +184,7 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
     if not pdb_path.exists():
         raise FileNotFoundError(f"PDB file not found at {pdb_path}")
 
+    output_dir = f"{cfg.paths.data_dir}/remd/{sequence}_{int(cfg.min_temp)}K-{int(cfg.max_temp)}K_{cfg.n_states}_{cfg.time_ns}_{cfg.timestep_fs}_{cfg.frame_interval}"
     setup_platform(cfg)
 
     pdb = PDBFile(str(pdb_path))
@@ -198,7 +201,7 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
     temperatures = geometric_temps(cfg.min_temp * unit.kelvin, cfg.max_temp * unit.kelvin, cfg.n_states)
     logger.info(
         f"Simulating system {pdb_path} with {cfg.n_states} replicas at temperatures: "
-        f"{', '.join([f'{t.value_in_unit(unit.kelvin):.1f} K' for t in temperatures])}"
+        f"{', '.join([f'{t.value_in_unit(unit.kelvin):.1f} K' for t in temperatures])}",
     )
     logger.info(
         f"Total simulation frames per replica to generate: {num_frames} "
@@ -224,9 +227,9 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
         deterministic_swap_order=True,
     )
 
-    Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
-    nc_path = Path(cfg.output_dir) / "remd.nc"
-    ckpt_path = Path(cfg.output_dir) / "remd_checkpoint.nc"
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    nc_path = Path(output_dir) / "remd.nc"
+    ckpt_path = Path(output_dir) / "remd_checkpoint.nc"
 
     reporter = multistate.MultiStateReporter(
         nc_path,
@@ -262,12 +265,12 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
 
     sampler.run()
 
-    save_swap_rates(reporter, Path(cfg.output_dir))
+    save_swap_rates(reporter, Path(output_dir))
     # NOTE: Demultiplexing is CPU-bound and may waste GPU time; some may prefer to do this as a post-processing step
     if cfg.get("demultiplex", False):
         logger.info("Demultiplexing and saving state trajectories...")
         temps = np.array([t.value_in_unit(unit.kelvin) for t in temperatures])
-        save_state_trajectories(reporter, Path(cfg.output_dir), temps)
+        save_state_trajectories(reporter, Path(output_dir), temps)
         logger.info("Demultiplexing complete.")
 
 
