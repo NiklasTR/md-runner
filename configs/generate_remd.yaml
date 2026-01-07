@@ -16,7 +16,6 @@ seq_idx: null
 min_temp: 300
 max_temp: 450
 n_states: 6
-n_states_mod: null
 timestep_fs: 2.0
 com_restraint: false  # Apply force to keep COM of peptide complexes together
 forcefield_files:
