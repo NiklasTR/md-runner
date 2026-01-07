@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from pathlib import Path
 
@@ -11,27 +12,28 @@ from openmm.app import ForceField, PDBFile
 from openmmtools import mcmc, multistate, states
 from openmmtools.cache import global_context_cache
 
-import hashlib
 
 def stable_hash(s: str) -> int:
     return int(hashlib.sha1(s.encode()).hexdigest(), 16)
 
+
 N_STATES_DICT = {
-    9:  (5,6),
-    10: (6,7),
-    11: (6,7),
-    12: (6,7),
-    13: (7,8),
-    14: (7,8),
-    15: (7,8),
-    16: (7,8),
-    17: (7,8),
-    18: (8,9),
-    19: (8,9),
-    20: (8,9),
+    9: (5, 6),
+    10: (6, 7),
+    11: (6, 7),
+    12: (6, 7),
+    13: (7, 8),
+    14: (7, 8),
+    15: (7, 8),
+    16: (7, 8),
+    17: (7, 8),
+    18: (8, 9),
+    19: (8, 9),
+    20: (8, 9),
 }
 
-def get_n_states(sequence: int) -> int:
+
+def get_n_states(sequence: str) -> int:
     seq_len = len(sequence)
     if seq_len in N_STATES_DICT:
         possible_states = N_STATES_DICT[seq_len]
@@ -41,6 +43,7 @@ def get_n_states(sequence: int) -> int:
             return possible_states[1]
     else:
         raise ValueError(f"Sequence length {seq_len} not in N_STATES_DICT")
+
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
@@ -128,7 +131,7 @@ def setup_platform(cfg):
     return None
 
 
-def save_swap_rates(reporter, output_dir: Path):
+def save_swap_rates(reporter, output_dir: Path, sequence: str):
     """Compute and save swap acceptance rates between neighboring thermodynamic states."""
     analysis = reporter._storage_analysis
     accepted = np.array(analysis.variables["accepted"][:])  # (iter, state_i, state_j)
@@ -141,10 +144,11 @@ def save_swap_rates(reporter, output_dir: Path):
         n_prop = proposed[:, i, i + 1].sum()
         rates[i] = n_acc / n_prop if n_prop > 0 else 0.0
 
-    seq = output_dir.name.split("_")[0]
-    seq_len = len(seq)
+    seq_len = len(sequence)
 
-    logger.info(f"Swap rates {seq} ({seq_len}) : " + ", ".join(f"{i}<->{i + 1}: {r:.4f}" for i, r in enumerate(rates)))
+    logger.info(
+        f"Swap rates {sequence} ({seq_len}) : " + ", ".join(f"{i}<->{i + 1}: {r:.4f}" for i, r in enumerate(rates))
+    )
     np.savetxt(output_dir / "swap_rates.txt", rates)
 
 
@@ -218,15 +222,18 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
     if not pdb_path.exists():
         raise FileNotFoundError(f"PDB file not found at {pdb_path}")
 
-    if cfg.n_states == "auto":
+    if str(cfg.n_states).lower() == "auto":
         n_states = get_n_states(sequence)
         logger.info(f"Auto-selected n_states={n_states} for sequence length {len(sequence)}")
     else:
-        assert isinstance(cfg.n_states, int)
-        assert cfg.n_states > 1
-        n_states = cfg.n_states
+        n_states = int(cfg.n_states)
+        assert n_states > 1
 
-    output_dir = f"{cfg.paths.data_dir}/remd/{sequence}_{int(cfg.min_temp)}K-{int(cfg.max_temp)}K_{n_states}_{cfg.time_ns}_{cfg.timestep_fs}_{cfg.frame_interval}"
+    output_dir = (
+        Path(cfg.paths.data_dir)
+        / "remd"
+        / f"{sequence}_{int(cfg.min_temp)}K-{int(cfg.max_temp)}K_{n_states}_{cfg.time_ns}_{cfg.timestep_fs}_{cfg.frame_interval}"
+    )
     setup_platform(cfg)
 
     pdb = PDBFile(str(pdb_path))
@@ -269,9 +276,9 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
         deterministic_swap_order=True,
     )
 
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
-    nc_path = Path(output_dir) / "remd.nc"
-    ckpt_path = Path(output_dir) / "remd_checkpoint.nc"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    nc_path = output_dir / "remd.nc"
+    ckpt_path = output_dir / "remd_checkpoint.nc"
 
     reporter = multistate.MultiStateReporter(
         nc_path,
@@ -304,6 +311,7 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
         # Each iteration corresponds to `frame_interval * timestep_fs` femtoseconds
         # convert ns -> fs then to iterations
         warmup_iterations = int(cfg.warmup_time_ns * 1e6 / (cfg.frame_interval * cfg.timestep_fs))
+        warmup_iterations = max(1, int(warmup_iterations))
 
         sampler.equilibrate(warmup_iterations)
         reporter._storage_checkpoint.is_equilibrated = 1
@@ -311,12 +319,12 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
         n_equib_ps = warmup_iterations * cfg.frame_interval * cfg.timestep_fs / 1e3
         n_equib_ns = n_equib_ps / 1e3
         logger.info(
-            f"Warmup done, {warmup_iterations} iterations ({n_equib_ps:.2f} ps / {n_equib_ns:.3f} ns)"
+            f"Warmup done, {warmup_iterations} iterations ({n_equib_ps:.2f} ps / {n_equib_ns:.3f} ns)",
         )
 
     sampler.run()
 
-    save_swap_rates(reporter, Path(output_dir))
+    save_swap_rates(reporter, output_dir, sequence)
     # NOTE: Demultiplexing is CPU-bound and may waste GPU time; some may prefer to do this as a post-processing step
     if cfg.get("demultiplex", False):
         logger.info("Demultiplexing and saving state trajectories...")
