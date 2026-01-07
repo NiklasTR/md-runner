@@ -257,11 +257,20 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
             reporter._storage_checkpoint.is_minimized = 1
             reporter.sync()
             logger.info("Minimized, running warmup/equilibration...")
-        sampler.equilibrate(cfg.warmup_iterations)
+
+        # Determine number of equilibration iterations from warmup time (preferred)
+        # Each iteration corresponds to `frame_interval * timestep_fs` femtoseconds
+        # convert ns -> fs then to iterations
+        warmup_iterations = int(cfg.warmup_time_ns * 1e6 / (cfg.frame_interval * cfg.timestep_fs))
+
+        sampler.equilibrate(warmup_iterations)
         reporter._storage_checkpoint.is_equilibrated = 1
         reporter.sync()
-        n_equib_ps = cfg.warmup_iterations * cfg.frame_interval * cfg.timestep_fs / 1e3
-        logger.info(f"Warmup done, {cfg.warmup_iterations} iterations ({n_equib_ps:.2f} ps)")
+        n_equib_ps = warmup_iterations * cfg.frame_interval * cfg.timestep_fs / 1e3
+        n_equib_ns = n_equib_ps / 1e3
+        logger.info(
+            f"Warmup done, {warmup_iterations} iterations ({n_equib_ps:.2f} ps / {n_equib_ns:.3f} ns)"
+        )
 
     sampler.run()
 
