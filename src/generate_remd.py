@@ -11,6 +11,37 @@ from openmm.app import ForceField, PDBFile
 from openmmtools import mcmc, multistate, states
 from openmmtools.cache import global_context_cache
 
+import hashlib
+
+def stable_hash(s: str) -> int:
+    return int(hashlib.sha1(s.encode()).hexdigest(), 16)
+
+N_STATES_DICT = {
+    9:  (5,6),
+    10: (6,7),
+    11: (6,7),
+    12: (6,7),
+    13: (7,8),
+    14: (7,8),
+    15: (7,8),
+    16: (7,8),
+    17: (7,8),
+    18: (8,9),
+    19: (8,9),
+    20: (8,9),
+}
+
+def get_n_states(sequence: int) -> int:
+    seq_len = len(sequence)
+    if seq_len in N_STATES_DICT:
+        possible_states = N_STATES_DICT[seq_len]
+        if stable_hash(sequence) % 2 == 0:
+            return possible_states[0]
+        else:
+            return possible_states[1]
+    else:
+        raise ValueError(f"Sequence length {seq_len} not in N_STATES_DICT")
+
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 logging.basicConfig(level=logging.INFO)
@@ -110,7 +141,10 @@ def save_swap_rates(reporter, output_dir: Path):
         n_prop = proposed[:, i, i + 1].sum()
         rates[i] = n_acc / n_prop if n_prop > 0 else 0.0
 
-    logger.info("Swap rates: " + ", ".join(f"{i}<->{i + 1}: {r:.4f}" for i, r in enumerate(rates)))
+    seq = output_dir.name.split("_")[0]
+    seq_len = len(seq)
+
+    logger.info(f"Swap rates {seq} ({seq_len}) : " + ", ".join(f"{i}<->{i + 1}: {r:.4f}" for i, r in enumerate(rates)))
     np.savetxt(output_dir / "swap_rates.txt", rates)
 
 
@@ -184,7 +218,15 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
     if not pdb_path.exists():
         raise FileNotFoundError(f"PDB file not found at {pdb_path}")
 
-    output_dir = f"{cfg.paths.data_dir}/remd/{sequence}_{int(cfg.min_temp)}K-{int(cfg.max_temp)}K_{cfg.n_states}_{cfg.time_ns}_{cfg.timestep_fs}_{cfg.frame_interval}"
+    if cfg.n_states == "auto":
+        n_states = get_n_states(sequence)
+        logger.info(f"Auto-selected n_states={n_states} for sequence length {len(sequence)}")
+    else:
+        assert isinstance(cfg.n_states, int)
+        assert cfg.n_states > 1
+        n_states = cfg.n_states
+
+    output_dir = f"{cfg.paths.data_dir}/remd/{sequence}_{int(cfg.min_temp)}K-{int(cfg.max_temp)}K_{n_states}_{cfg.time_ns}_{cfg.timestep_fs}_{cfg.frame_interval}"
     setup_platform(cfg)
 
     pdb = PDBFile(str(pdb_path))
@@ -198,9 +240,9 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
 
     system = get_system(topology, cfg.forcefield_files, cfg.com_restraint)
 
-    temperatures = geometric_temps(cfg.min_temp * unit.kelvin, cfg.max_temp * unit.kelvin, cfg.n_states)
+    temperatures = geometric_temps(cfg.min_temp * unit.kelvin, cfg.max_temp * unit.kelvin, n_states)
     logger.info(
-        f"Simulating system {pdb_path} with {cfg.n_states} replicas at temperatures: "
+        f"Simulating system {pdb_path} with {n_states} replicas at temperatures: "
         f"{', '.join([f'{t.value_in_unit(unit.kelvin):.1f} K' for t in temperatures])}",
     )
     logger.info(
@@ -244,7 +286,7 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
         is_equilibrated = bool(getattr(reporter._storage_checkpoint, "is_equilibrated", 0))
     else:
         logger.info("Starting new REMD simulation from scratch")
-        sampler.create(thermodynamic_states, [sampler_state] * cfg.n_states, reporter)
+        sampler.create(thermodynamic_states, [sampler_state] * n_states, reporter)
         reporter._storage_checkpoint.is_minimized = 0
         reporter._storage_checkpoint.is_equilibrated = 0
         reporter.sync()

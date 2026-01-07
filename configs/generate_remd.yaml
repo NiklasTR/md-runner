@@ -16,12 +16,13 @@ seq_idx: null
 min_temp: 300
 max_temp: 450
 n_states: 6
+n_states_mod: null
 timestep_fs: 2.0
 com_restraint: false  # Apply force to keep COM of peptide complexes together
 forcefield_files:
   - amber14-all.xml
   - implicit/obc1.xml
-warmup_time_ns: 2.0 # Warmup duration in nanoseconds (preferred)
-frame_interval: 5000 # How many integration steps between iterations (i.e. swap attempts and frame recordings)
+warmup_time_ns: 0.5 # Warmup duration in nanoseconds
+frame_interval: 2_500 # How many integration steps between iterations (i.e. swap attempts and frame recordings)
 time_ns: 1.0 # Total simulation time in nanoseconds
 demultiplex: false # Extract per-state trajectories and swap rates after simulation
