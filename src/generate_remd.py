@@ -147,7 +147,7 @@ def save_swap_rates(reporter, output_dir: Path, sequence: str):
     seq_len = len(sequence)
 
     logger.info(
-        f"Swap rates {sequence} ({seq_len}) : " + ", ".join(f"{i}<->{i + 1}: {r:.4f}" for i, r in enumerate(rates))
+        f"Swap rates {sequence} ({seq_len}) : " + ", ".join(f"{i}<->{i + 1}: {r:.4f}" for i, r in enumerate(rates)),
     )
     np.savetxt(output_dir / "swap_rates.txt", rates)
 
@@ -217,6 +217,8 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
     else:
         with Path(cfg.seq_filename).open() as f:
             sequences = f.read().strip().splitlines()
+        if cfg.seq_idx < 0 or cfg.seq_idx >= len(sequences):
+            raise ValueError(f"seq_idx {cfg.seq_idx} out of range for {len(sequences)} sequences in {cfg.seq_filename}")
         sequence = sequences[cfg.seq_idx]
         pdb_path = Path(cfg.pdb_dir) / f"{sequence}.pdb"
     if not pdb_path.exists():
@@ -232,7 +234,7 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
     output_dir = (
         Path(cfg.paths.data_dir)
         / "remd"
-        / f"{sequence}_{int(cfg.min_temp)}K-{int(cfg.max_temp)}K_{n_states}_{cfg.time_ns}_{cfg.timestep_fs}_{cfg.frame_interval}"
+        / f"{sequence}_{int(cfg.min_temp)}K-{int(cfg.max_temp)}K_{n_states}_{cfg.timestep_fs}_{cfg.frame_interval}"
     )
     setup_platform(cfg)
 
