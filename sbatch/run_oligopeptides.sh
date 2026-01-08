@@ -32,6 +32,13 @@ echo "Processes per GPU: $PROCS_PER_GPU"
 MPS_DIR=/tmp/$USER/mps_${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}
 mkdir -p "$MPS_DIR/pipe" "$MPS_DIR/log"
 
+cleanup() {
+  echo "Cleaning up..."
+  echo quit | nvidia-cuda-mps-control || true
+  rm -rf "$MPS_DIR" || true
+}
+trap cleanup EXIT SIGUSR1 SIGTERM SIGINT
+
 export CUDA_MPS_PIPE_DIRECTORY="$MPS_DIR/pipe"
 export CUDA_MPS_LOG_DIRECTORY="$MPS_DIR/log"
 
@@ -52,7 +59,7 @@ echo "Launching MD jobs from indices $BASE_IDX to $(( BASE_IDX + PROCS_PER_GPU -
 for ((i=0; i<PROCS_PER_GPU; i++)); do
     IDX=$(( BASE_IDX + i ))
     echo "Launching process for seq_idx=$IDX"
-    python src/generate_md.py seq_idx=$IDX seq_filename=$SEQ_FILE &
+    python src/generate_remd.py seq_idx=$IDX seq_filename=$SEQ_FILE n_states="auto" &
 done
 
 wait
