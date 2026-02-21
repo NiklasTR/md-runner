@@ -7,9 +7,33 @@ The codebase builds on and extends the MD simulation tools provided in [**TimeWa
 
 ## Installation
 
+### Option 1: Conda / Micromamba (recommended)
+
+Requires [AmberTools](https://ambermd.org/AmberTools.php) for tLEaP-based sequence-to-PDB conversion.
+
 ```bash
 micromamba env create -f environment.yaml
 micromamba activate md-runner
+```
+
+### Option 2: uv
+
+```bash
+uv venv
+source .venv/bin/activate  # or `.venv\Scripts\activate` on Windows
+uv pip install -e ".[boltz]"
+```
+
+**Note:** AmberTools (for tLEaP) is not available via pip. Install it separately with conda (`conda install -c conda-forge ambertools`) if you need `src/seq_to_pdb/tleap.py`.
+
+### Optional: Boltz-2 for structure prediction
+
+To use the `src/seq_to_pdb/boltz2.py` module (Boltz-2–based structure prediction), install the optional dependency:
+
+```bash
+pip install boltz[cuda] -U
+# or with uv:
+uv pip install boltz[cuda]
 ```
 
 ## Workflow
@@ -21,7 +45,7 @@ We use **tLEaP** (AmberTools) to construct peptide initial conformations from am
 To convert a set of sequences into PDB files:
 
 ```bash
-python src/seq_to_pdb.py seq_filename=sequences/example_sequences.txt
+python src/seq_to_pdb/tleap.py seq_filename=sequences/example_sequences.txt
 ```
 
 ### 2. Run Molecular Dynamics Simulations (Local)
@@ -29,7 +53,7 @@ python src/seq_to_pdb.py seq_filename=sequences/example_sequences.txt
 You can perform a local test/benchmark MD simulation using:
 
 ```bash
-python src/generate_md.py seq_name=AA
+python src/pdb_to_sim/md.py seq_name=AA
 ```
 
 ### 3. Run Molecular Dynamics Simulations (SLURM)

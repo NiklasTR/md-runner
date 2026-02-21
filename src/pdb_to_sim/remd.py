@@ -202,7 +202,7 @@ def save_state_trajectories(reporter, output_dir: Path, temperatures: np.ndarray
     logger.info(f"Saved trajectories: {n_states} states, {n_iter} frames each")
 
 
-@hydra.main(version_base="1.3", config_path="../configs", config_name="generate_remd.yaml")
+@hydra.main(version_base="1.3", config_path="../../configs", config_name="generate_remd.yaml")
 def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
     assert cfg.frame_interval > 0
     assert cfg.time_ns > 0

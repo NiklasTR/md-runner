@@ -17,7 +17,7 @@ echo "task=${SLURM_ARRAY_TASK_ID} seq_idx=${seq_idx} n_states_mod=${n_states_mod
 
 conda activate md-runner
 
-python src/generate_remd.py \
+python src/pdb_to_sim/remd.py \
   seq_filename=sequences/test_sequences.txt \
   seq_idx=${seq_idx} \
   n_states_mod=${n_states_mod} \

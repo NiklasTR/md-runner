@@ -58,7 +58,7 @@ running=0
 for ((k=0; k<TOTAL_PER_JOB; k++)); do
   IDX=$(( BASE_IDX + k ))
   echo "Launching seq_idx=$IDX"
-  python src/generate_remd.py seq_idx=$IDX seq_filename="$SEQ_FILE" n_states=auto &
+  python src/pdb_to_sim/remd.py seq_idx=$IDX seq_filename="$SEQ_FILE" n_states=auto &
 
   running=$(( running + 1 ))
   if [ "$running" -ge "$MAX_CONCURRENT" ]; then

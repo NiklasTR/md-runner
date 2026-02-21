@@ -8,7 +8,7 @@ import pytest
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, open_dict
 
-from src.seq_to_pdb import seq_to_pdb
+from src.seq_to_pdb.tleap import seq_to_pdb
 from tests.conftest import TEST_SEQUENCE
 from tests.helpers.utils import compose_config
 

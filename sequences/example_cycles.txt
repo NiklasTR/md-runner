@@ -1,0 +1,13 @@
+[#HeadTailLactam]
+[#HeadTailLactam]
+
+Highly constrained, rich in Pro/D-Pro to force the tight backbone turn)
+
+PlVp [#HeadTailLactam] (PRO - DLEU - VAL - DPRO)
+pLiP [#HeadTailLactam] (DPRO - LEU - DILE - PRO)
+8-mers
+(Classic cyclic peptide length, alternating stereochemistry often helps cyclization)
+
+[#HeadTailLactam][P][dL][P][dV][L][dA][F][dP]
+[#HeadTailLactam][dP][L][V][dI][dP][dL][A][dF]
+[#HeadTailLactam][P][dL][P][L][dV][dP][I][dA][P][dF][L][dV]

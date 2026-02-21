@@ -145,7 +145,7 @@ def make_peptide_with_tleap(three_letter_seq: List[str], save_path: Path) -> Non
         output_pdb_path.unlink(missing_ok=True)
 
 
-@hydra.main(version_base="1.3", config_path="../configs", config_name="seq_to_pdb.yaml")
+@hydra.main(version_base="1.3", config_path="../../configs", config_name="seq_to_pdb.yaml")
 def seq_to_pdb(cfg: DictConfig) -> None:
     """
     Convert amino acid sequences to PDB files using tLEaP.

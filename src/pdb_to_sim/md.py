@@ -1,5 +1,4 @@
 """
-
 Script to generate MD data as in timewarp.
 
 Benchmarking on Mila Cluster March 10 2025
@@ -40,7 +39,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-@hydra.main(version_base="1.3", config_path="../configs", config_name="generate_md.yaml")
+@hydra.main(version_base="1.3", config_path="../../configs", config_name="generate_md.yaml")
 def generate_md(cfg: DictConfig) -> None:  # noqa: C901
     """
     Generate molecular dynamics simulation data from a PDB file.

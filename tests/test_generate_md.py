@@ -10,7 +10,7 @@ import pytest
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, open_dict
 
-from src.generate_md import generate_md
+from src.pdb_to_sim.md import generate_md
 from tests.conftest import TEST_SEQUENCE
 from tests.helpers.utils import compose_config
 
