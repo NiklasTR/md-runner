@@ -9,10 +9,13 @@ import hydra
 import openmm.app
 import rootutils
 from omegaconf import DictConfig
+from openmm.app import ForceField
 from pdbfixer import PDBFixer
 from tqdm import tqdm
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+
+_AMBER14_FORCEFIELD = ForceField("amber14-all.xml", "implicit/obc1.xml")
 
 _YAML_TEMPLATE = """sequences:
   - protein:
@@ -25,7 +28,10 @@ _YAML_TEMPLATE = """sequences:
 def _fix_pdb_with_pdbfixer(pdb_path: Path, out_path: Path, *, pH: float = 7.0) -> None:
     """Add hydrogens and fix protonation with PDBFixer."""
     fixer = PDBFixer(filename=str(pdb_path))
-    fixer.addMissingHydrogens(pH=pH)
+    fixer.findMissingResidues()
+    fixer.findMissingAtoms()
+    fixer.addMissingAtoms()
+    fixer.addMissingHydrogens(pH=pH, forcefield=_AMBER14_FORCEFIELD)
     with open(out_path, "w") as f:
         openmm.app.PDBFile.writeFile(fixer.topology, fixer.positions, f)
 
