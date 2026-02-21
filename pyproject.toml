@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-boltz = ["boltz[cuda]>=2.0"]
+boltz = ["boltz[cuda]>=2.0", "pdbfixer"]
 
 [tool.pytest.ini_options]
 addopts = [

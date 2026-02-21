@@ -1,10 +1,8 @@
-# path to root directory
-# this requires PROJECT_ROOT environment variable to exist
-# you can replace it with "." if you want the root to be the current working directory
-root_dir: ${oc.env:PROJECT_ROOT}
+# path to root directory (default: current working directory)
+root_dir: ${oc.env:PROJECT_ROOT,.}
 
-# path to scratch directory
-scratch_dir: ${oc.env:SCRATCH_DIR}/md-runner-remd
+# path to scratch directory (default: ./data when SCRATCH_DIR unset)
+scratch_dir: ${oc.env:SCRATCH_DIR,./data}/md-runner-remd
 
 # path to data directory
 data_dir: ${paths.scratch_dir}/data
