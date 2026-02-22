@@ -23,4 +23,4 @@ cd packages/md-runner
 export PROJECT_ROOT="$(pwd)"
 export SCRATCH_DIR="${SCRATCH_DIR:-./data}"
 
-python src/seq_to_pdb/boltz2.py seq_filename=sequences/example_sequences.txt
+python -m src.seq_to_pdb.boltz2 seq_filename=sequences/example_cycles.txt

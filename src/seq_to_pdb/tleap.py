@@ -10,11 +10,10 @@ from pathlib import Path
 from typing import List
 
 import hydra
-import rootutils
 from omegaconf import DictConfig
 from tqdm import tqdm
 
-rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+from src.utils.sequence_parser import parse_sequence_line
 
 # Mapping from single-letter to three-letter amino acid codes
 aa_321 = {
@@ -174,13 +173,25 @@ def seq_to_pdb(cfg: DictConfig) -> None:
     )
 
     if cfg.seq_filename is not None:
-        seq_filename = cfg.seq_filename
-        with Path(seq_filename).open() as f:
-            sequences = [line.strip() for line in f.readlines()]
+        with Path(cfg.seq_filename).open() as f:
+            sequences = [
+                p
+                for line in f
+                if (p := parse_sequence_line(line)) is not None
+            ]
     else:
-        sequences = [cfg.seq_name]
+        raw = cfg.seq_name
+        parsed = parse_sequence_line(raw)
+        if parsed is None:
+            raise ValueError(f"Could not parse sequence: {raw!r}")
+        sequences = [parsed]
 
-    for sequence in tqdm(sequences):
+    for sequence, is_cyclic, _ in tqdm(sequences):
+        if is_cyclic:
+            raise NotImplementedError(
+                "Cyclic peptides are not supported by tLEaP. "
+                "Use Boltz (seq_to_pdb/boltz2.py) for cyclic peptide structure prediction."
+            )
         save_path = pdb_dir / f"{sequence}.pdb"
         make_peptide_with_tleap(translate_1letter_to_3letter(sequence), save_path)
 

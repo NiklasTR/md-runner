@@ -40,6 +40,25 @@ def cfg_test_seq_to_pdb(shared_tmp_path: Path) -> DictConfig:
     GlobalHydra.instance().clear()
 
 
+def test_seq_to_pdb_cyclic_raises_not_implemented(shared_tmp_path: Path) -> None:
+    """Cyclic peptides raise NotImplementedError when using tLEaP."""
+    GlobalHydra.instance().clear()
+    cfg = compose_config(
+        config_name="seq_to_pdb",
+        overrides=['seq_name="[#HeadTailLactam][P][dL][P][dV][L][dA][F][dP]"'],
+    )
+    with open_dict(cfg):
+        cfg.paths.data_dir = str(shared_tmp_path / "data")
+        cfg.paths.log_dir = str(shared_tmp_path / "logs")
+        cfg.paths.work_dir = str(Path.cwd())
+
+    with pytest.raises(NotImplementedError) as exc_info:
+        seq_to_pdb(cfg)
+    assert "Cyclic peptides" in str(exc_info.value)
+    assert "Boltz" in str(exc_info.value)
+    GlobalHydra.instance().clear()
+
+
 @pytest.mark.forked  # prevents OpenMM/tLEaP issues
 def test_seq_to_pdb(cfg_test_seq_to_pdb: DictConfig) -> None:
     """
