@@ -31,9 +31,12 @@ import openmm
 import rootutils
 from omegaconf import DictConfig
 from openmm import Platform, XmlSerializer
-from openmm.app import ForceField, PDBFile, Simulation, StateDataReporter
+from openmm.app import Simulation, StateDataReporter
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+
+from src.utils.sequence_parser import line_to_name, parse_sequence_line
+from src.utils.topology_io import load_npz, positions_from_npz, system_from_npz, topology_from_npz
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -69,26 +72,36 @@ def generate_md(cfg: DictConfig) -> None:  # noqa: C901
     assert cfg.frames_per_chunk > 0
     assert cfg.time_ns > 0
 
-    assert cfg.get("pdb_dir") is not None or (cfg.get("seq_filename") is not None and cfg.get("seq_idx") is not None), (
-        "Either 'pdb_dir' or both 'seq_filename' and 'seq_idx' must be specified in the config"
+    assert cfg.get("npz_dir") is not None or (cfg.get("seq_filename") is not None and cfg.get("seq_idx") is not None), (
+        "Either 'npz_dir' or both 'seq_filename' and 'seq_idx' must be specified in the config"
     )
 
     if cfg.get("seq_name") is not None:
-        pdb_path = Path(cfg.pdb_dir) / f"{cfg.seq_name}.pdb"
+        name = cfg.seq_name
+        npz_path = Path(cfg.npz_dir) / f"{name}.npz"
     else:
         with Path(cfg.seq_filename).open() as f:
-            sequences = f.read().strip().splitlines()
-        sequence = sequences[cfg.seq_idx]
-        pdb_path = Path(cfg.pdb_dir) / f"{sequence}.pdb"
+            lines = f.read().strip().splitlines()
+        line = lines[cfg.seq_idx]
+        parsed = parse_sequence_line(line)
+        if parsed is None:
+            raise ValueError(f"Could not parse sequence line: {line!r}")
+        name = line_to_name(line)
+        npz_path = Path(cfg.npz_dir) / f"{name}.npz"
 
-    # Calculate number of frames from time period
-    # Each integration step is 1 fs, frame_interval steps between frames
-    # time_ns * 1e6 fs/ns = total time in fs = num_frames * frame_interval
+    npz_data = load_npz(str(npz_path))
+
     num_frames = int(cfg.time_ns * 1e6 / cfg.frame_interval)
 
     # Calculate number of chunks needed
     num_chunks = (num_frames + cfg.frames_per_chunk - 1) // cfg.frames_per_chunk
-    logger.info(f"Simulating system {pdb_path} at {cfg.temperature}K")
+
+    output_dir = (
+        Path(cfg.paths.data_dir)
+        / "md"
+        / f"{name}_{cfg.temperature}_{cfg.frame_interval}_{cfg.frames_per_chunk}"
+    )
+    logger.info(f"Simulating system {npz_path} at {cfg.temperature}K")
     logger.info(
         f"Total frames to generate: {num_frames} "
         f"(calculated from {cfg.time_ns} ns / {cfg.frame_interval} fs per saved frame).",
@@ -98,8 +111,8 @@ def generate_md(cfg: DictConfig) -> None:  # noqa: C901
         f"(last chunk may contain fewer frames).",
     )
 
-    chunks_dir = Path(cfg.output_dir) / "chunks"
-    Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
+    chunks_dir = output_dir / "chunks"
+    output_dir.mkdir(parents=True, exist_ok=True)
     chunks_dir.mkdir(parents=True, exist_ok=True)
 
     final_chunk_path = chunks_dir / f"chunk_{num_chunks - 1}.npz"
@@ -107,23 +120,15 @@ def generate_md(cfg: DictConfig) -> None:  # noqa: C901
         logger.info(f"Final chunk already exists at {final_chunk_path}, skipping simulation.")
         return
 
-    pdb = PDBFile(str(pdb_path))
-    topology = pdb.getTopology()
-    positions = pdb.getPositions(asNumpy=True)
+    topology = topology_from_npz(npz_data)
+    positions = positions_from_npz(npz_data)
+    system = system_from_npz(npz_data)
 
     platform_properties = {}
     if hasattr(cfg, "platform_properties") and cfg.platform_properties is not None:
         platform_properties = dict(cfg.platform_properties)
         if "Threads" in platform_properties:
             platform_properties["Threads"] = str(platform_properties["Threads"])
-
-    forcefield = ForceField("amber14-all.xml", "implicit/obc1.xml")
-    system = forcefield.createSystem(
-        topology,
-        nonbondedMethod=openmm.app.CutoffNonPeriodic,
-        nonbondedCutoff=2.0 * openmm.unit.nanometer,
-        constraints=None,
-    )
     integrator = openmm.LangevinMiddleIntegrator(
         cfg.temperature * openmm.unit.kelvin,
         0.3 / openmm.unit.picosecond,
@@ -140,7 +145,7 @@ def generate_md(cfg: DictConfig) -> None:  # noqa: C901
     logger.info(f"Platform name: {cfg.platform_name} properties: {platform_properties}")
     simulation.reporters.append(
         StateDataReporter(
-            str(Path(cfg.output_dir) / "output.txt"),
+            str(output_dir / "output.txt"),
             cfg.log_freq * cfg.frame_interval,
             step=True,
             potentialEnergy=True,
@@ -231,9 +236,9 @@ def generate_md(cfg: DictConfig) -> None:  # noqa: C901
         # NOTE: We had issues with loading checkpoints on different devices,
         # Hence when resuming simply load the positions and velocities from the last saved chunk.
         # These are left here for completeness and in case someone wants to use them in the future.
-        simulation.saveCheckpoint(str(Path(cfg.output_dir) / "checkpoint.chk"))
-        simulation.saveState(str(Path(cfg.output_dir) / "state.xml"))
-        system_xml_path = Path(cfg.output_dir) / "system.xml"
+        simulation.saveCheckpoint(str(output_dir / "checkpoint.chk"))
+        simulation.saveState(str(output_dir / "state.xml"))
+        system_xml_path = output_dir / "system.xml"
         with system_xml_path.open("w") as output:
             output.write(XmlSerializer.serialize(system))
 

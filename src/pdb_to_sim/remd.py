@@ -8,9 +8,12 @@ import openmm
 import rootutils
 from omegaconf import DictConfig
 from openmm import CustomCentroidBondForce, Platform, unit
-from openmm.app import ForceField, PDBFile
+from openmm.app import ForceField
 from openmmtools import mcmc, multistate, states
 from openmmtools.cache import global_context_cache
+
+from src.utils.sequence_parser import line_to_name, parse_sequence_line
+from src.utils.topology_io import load_npz, positions_from_npz, system_from_npz, topology_from_npz
 
 
 def stable_hash(s: str) -> int:
@@ -106,14 +109,17 @@ def add_com_restraint(
     system.addForce(force)
 
 
-def get_system(topology, forcefield_files, com_restraint=False):
-    forcefield = ForceField(*forcefield_files)
-    system = forcefield.createSystem(
-        topology,
-        nonbondedMethod=openmm.app.CutoffNonPeriodic,
-        nonbondedCutoff=2.0 * unit.nanometer,
-        constraints=openmm.app.HBonds,
-    )
+def get_system(topology, forcefield_files=None, com_restraint=False, *, npz_data=None):
+    if npz_data is not None:
+        system = system_from_npz(npz_data)
+    else:
+        forcefield = ForceField(*forcefield_files)
+        system = forcefield.createSystem(
+            topology,
+            nonbondedMethod=openmm.app.CutoffNonPeriodic,
+            nonbondedCutoff=2.0 * unit.nanometer,
+            constraints=openmm.app.HBonds,
+        )
     if com_restraint:
         add_com_restraint(system, topology)
     return system
@@ -208,21 +214,31 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
     assert cfg.time_ns > 0
     assert cfg.timestep_fs > 0
 
-    assert cfg.get("pdb_dir") is not None or (cfg.get("seq_filename") is not None and cfg.get("seq_idx") is not None), (
-        "Either 'pdb_dir' or both 'seq_filename' and 'seq_idx' must be specified in the config"
+    assert cfg.get("npz_dir") is not None or (cfg.get("seq_filename") is not None and cfg.get("seq_idx") is not None), (
+        "Either 'npz_dir' or both 'seq_filename' and 'seq_idx' must be specified in the config"
     )
 
     if cfg.get("seq_name") is not None:
-        pdb_path = Path(cfg.pdb_dir) / f"{cfg.seq_name}.pdb"
+        name = cfg.seq_name
+        npz_path = Path(cfg.npz_dir) / f"{name}.npz"
     else:
         with Path(cfg.seq_filename).open() as f:
-            sequences = f.read().strip().splitlines()
-        if cfg.seq_idx < 0 or cfg.seq_idx >= len(sequences):
-            raise ValueError(f"seq_idx {cfg.seq_idx} out of range for {len(sequences)} sequences in {cfg.seq_filename}")
-        sequence = sequences[cfg.seq_idx]
-        pdb_path = Path(cfg.pdb_dir) / f"{sequence}.pdb"
-    if not pdb_path.exists():
-        raise FileNotFoundError(f"PDB file not found at {pdb_path}")
+            lines = f.read().strip().splitlines()
+        if cfg.seq_idx < 0 or cfg.seq_idx >= len(lines):
+            raise ValueError(f"seq_idx {cfg.seq_idx} out of range for {len(lines)} sequences in {cfg.seq_filename}")
+        line = lines[cfg.seq_idx]
+        parsed = parse_sequence_line(line)
+        if parsed is None:
+            raise ValueError(f"Could not parse sequence line: {line!r}")
+        name = line_to_name(line)
+        npz_path = Path(cfg.npz_dir) / f"{name}.npz"
+    if not npz_path.exists():
+        raise FileNotFoundError(f"NPZ file not found at {npz_path}")
+
+    npz_data = load_npz(str(npz_path))
+    sequence = str(npz_data["sequence"])
+    topology = topology_from_npz(npz_data)
+    positions = positions_from_npz(npz_data)
 
     if str(cfg.n_states).lower() == "auto":
         n_states = get_n_states(sequence)
@@ -234,24 +250,17 @@ def generate_remd(cfg: DictConfig) -> None:  # noqa: C901
     output_dir = (
         Path(cfg.paths.data_dir)
         / "remd"
-        / f"{sequence}_{int(cfg.min_temp)}K-{int(cfg.max_temp)}K_{n_states}_{cfg.timestep_fs}_{cfg.frame_interval}"
+        / f"{name}_{int(cfg.min_temp)}K-{int(cfg.max_temp)}K_{n_states}_{cfg.timestep_fs}_{cfg.frame_interval}"
     )
     setup_platform(cfg)
 
-    pdb = PDBFile(str(pdb_path))
-    topology = pdb.getTopology()
-    positions = pdb.getPositions(asNumpy=True)
-
-    # Calculate number of frames from time period
-    # Each integration step is timestep_fs fs, frame interval steps between frames
-    # time_ns * 1e6 fs/ns = total time in fs = num_frames * frame_interval * timestep_fs
     num_frames = int(cfg.time_ns * 1e6 / (cfg.frame_interval * cfg.timestep_fs))
 
-    system = get_system(topology, cfg.forcefield_files, cfg.com_restraint)
+    system = get_system(topology, cfg.get("forcefield_files"), cfg.com_restraint, npz_data=npz_data)
 
     temperatures = geometric_temps(cfg.min_temp * unit.kelvin, cfg.max_temp * unit.kelvin, n_states)
     logger.info(
-        f"Simulating system {pdb_path} with {n_states} replicas at temperatures: "
+        f"Simulating system {npz_path} with {n_states} replicas at temperatures: "
         f"{', '.join([f'{t.value_in_unit(unit.kelvin):.1f} K' for t in temperatures])}",
     )
     logger.info(

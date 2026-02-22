@@ -9,7 +9,7 @@ defaults:
   - hydra: default
   - _self_
 task_name: generate_remd
-pdb_dir: ${paths.data_dir}/pdbs
+npz_dir: ${paths.data_dir}/pdbs
 seq_name: null
 seq_filename: null
 seq_idx: null

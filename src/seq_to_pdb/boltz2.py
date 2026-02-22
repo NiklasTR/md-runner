@@ -22,6 +22,7 @@ from pdbfixer import PDBFixer
 from tqdm import tqdm
 
 from src.utils.sequence_parser import d_positions_and_ccds, line_to_name, parse_sequence_line
+from src.utils.topology_io import load_npz, save_npz, write_xyz
 
 logger = logging.getLogger(__name__)
 _AMBER14_FORCEFIELD = ForceField("amber14-all.xml", "implicit/obc1.xml")
@@ -205,8 +206,8 @@ def _minimize(
     positions,
     *,
     cyclic: bool = False,
-) -> list:
-    """Energy-minimize in memory using implicit solvent (OBC1). Returns updated positions."""
+) -> tuple[openmm.app.Simulation, openmm.openmm.System]:
+    """Energy-minimize in memory. Returns (Simulation, System) after minimization."""
     ff = (
         _CyclicForceField("amber14-all.xml", "implicit/obc1.xml")
         if cyclic
@@ -228,7 +229,7 @@ def _minimize(
     simulation.minimizeEnergy()
     e_after = simulation.context.getState(getEnergy=True).getPotentialEnergy()
     logger.info("Minimized: %s -> %s", e_before, e_after)
-    return simulation.context.getState(getPositions=True).getPositions()
+    return simulation, system
 
 
 def make_peptide_with_boltz(
@@ -241,11 +242,13 @@ def make_peptide_with_boltz(
     cyclic: bool = False,
     modifications: list[tuple[int, str]] | None = None,
 ) -> None:
-    """Generate a PDB file for a peptide sequence using Boltz-2 (single-sequence, no MSA).
+    """Generate an NPZ file for a peptide sequence using Boltz-2 (single-sequence, no MSA).
+
+    The NPZ contains: atoms, positions, sequence, topology, system, state.
 
     Args:
         sequence: One-letter amino acid sequence (e.g. "ACD"). Lowercase for D-amino acids.
-        save_path: Path where the generated PDB file will be saved.
+        save_path: Path where the generated .npz file will be saved.
         accelerator: "gpu" or "cpu".
         cyclic: If True, set cyclic: true in Boltz config for head-to-tail lactam peptides.
 
@@ -318,9 +321,20 @@ def make_peptide_with_boltz(
             pdb = PDBFile(str(boltz_pdb))
             topology, positions = pdb.topology, pdb.positions
 
-    positions = _minimize(topology, positions, cyclic=cyclic)
-    with open(save_path, "w") as f:
-        PDBFile.writeFile(topology, positions, f)
+    simulation, system = _minimize(topology, positions, cyclic=cyclic)
+
+    save_npz(
+        str(save_path),
+        topology,
+        simulation,
+        system,
+        sequence=sequence,
+        is_cyclic=cyclic,
+    )
+
+    xyz_path = save_path.with_suffix(".xyz")
+    write_xyz(str(xyz_path), load_npz(str(save_path)))
+    logger.info("Saved %s and %s", save_path.name, xyz_path.name)
 
 
 @hydra.main(version_base="1.3", config_path="../../configs", config_name="seq_to_pdb.yaml")
@@ -358,7 +372,7 @@ def seq_to_pdb(cfg: DictConfig) -> None:
     pH = getattr(cfg, "pH", 7.0)
 
     for sequence, is_cyclic, modifications, name in tqdm(sequences):
-        save_path = pdb_dir / f"{name}.pdb"
+        save_path = pdb_dir / f"{name}.npz"
         make_peptide_with_boltz(
             sequence,
             save_path,
